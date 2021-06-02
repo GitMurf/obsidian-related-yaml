@@ -1,4 +1,11 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import type moment from "moment";
+
+declare global {
+    interface Window {
+        moment: typeof moment;
+    }
+}
 
 interface MyPluginSettings {
 	mySetting: string;
