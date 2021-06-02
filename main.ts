@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, View, ItemView } from 'obsidian';
 import type moment from "moment";
 
 declare global {
@@ -7,62 +7,45 @@ declare global {
     }
 }
 
+const PLUGIN_NAME = 'Related YAML';
+const VIEW_TYPE = 'related-yaml';
+
 interface MyPluginSettings {
-	mySetting: string;
+    mySetting: string;
+    toggleSetting: boolean;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+    mySetting: 'default',
+    toggleSetting: true
 }
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
 
 	async onload() {
-		console.log('loading plugin');
+        console.log('loading plugin: ' + PLUGIN_NAME);
+        await this.loadSettings();
+        this.addSettingTab(new SampleSettingTab(this.app, this));
 
-		await this.loadSettings();
+        //Load view
+        this.registerView(
+            VIEW_TYPE,
+            (leaf: WorkspaceLeaf) => (this.view = new RelatedYamlView(leaf))
+        );
 
-		this.addRibbonIcon('dice', 'Sample Plugin', () => {
-			new Notice('This is a notice!');
-		});
+        unloadViews(this.app, VIEW_TYPE);
+        this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
+    }
 
-		this.addStatusBarItem().setText('Status Bar Text');
-
-		this.addCommand({
-			id: 'open-sample-modal',
-			name: 'Open Sample Modal',
-			// callback: () => {
-			// 	console.log('Simple Callback');
-			// },
-			checkCallback: (checking: boolean) => {
-				let leaf = this.app.workspace.activeLeaf;
-				if (leaf) {
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-					return true;
-				}
-				return false;
-			}
-		});
-
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		this.registerCodeMirror((cm: CodeMirror.Editor) => {
-			console.log('codemirror', cm);
-		});
-
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-	}
-
-	onunload() {
-		console.log('unloading plugin');
-	}
+    async onLayoutReady() {
+        let viewCount: number = this.app.workspace.getLeavesOfType(VIEW_TYPE).length;
+        if (viewCount == 0) {
+            await this.app.workspace.getRightLeaf(false).setViewState({
+                type: VIEW_TYPE,
+            });
+        }
+    }
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -70,23 +53,12 @@ export default class MyPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
+    }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		let {contentEl} = this;
-		contentEl.empty();
-	}
+    async onunload() {
+        console.log('unloading plugin: ' + PLUGIN_NAME);
+        unloadViews(this.app, VIEW_TYPE)
+    }
 }
 
 class SampleSettingTab extends PluginSettingTab {
@@ -98,10 +70,8 @@ class SampleSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		let {containerEl} = this;
-
-		containerEl.empty();
-
+        let { containerEl } = this;
+        containerEl.empty();
 		containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'});
 
 		new Setting(containerEl)
@@ -114,6 +84,60 @@ class SampleSettingTab extends PluginSettingTab {
 					console.log('Secret: ' + value);
 					this.plugin.settings.mySetting = value;
 					await this.plugin.saveSettings();
-				}));
-	}
+                }));
+
+        new Setting(containerEl)
+            .setName("Toggle")
+            .setDesc("I am a toggle.")
+            .addToggle((toggle) => {
+                toggle.setValue(this.plugin.settings.toggleSetting);
+                toggle.onChange(async (value) => {
+                    this.plugin.settings.toggleSetting = value;
+                    await this.plugin.saveSettings();
+                });
+            });
+    }
+}
+
+class RelatedYamlView extends ItemView {
+
+    constructor(leaf: WorkspaceLeaf) {
+        super(leaf);
+/*
+    this.redraw = this.redraw.bind(this);
+    this.redraw_debounced = this.redraw_debounced.bind(this);
+    this.containerEl = this.containerEl;
+    this.registerEvent(this.app.workspace.on("layout-ready", this.redraw_debounced));
+    this.registerEvent(this.app.workspace.on("file-open", this.redraw_debounced));
+    this.registerEvent(this.app.workspace.on("quick-preview", this.redraw_debounced));
+    this.registerEvent(this.app.vault.on("delete", this.redraw));
+*/
+    }
+
+    getViewType(): string {
+        return VIEW_TYPE;
+    }
+
+    getDisplayText(): string {
+        return "Related YAML";
+    }
+
+    getIcon(): string {
+        return "cloud";
+    }
+
+    onClose(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    async onOpen(): Promise<void> {
+        //this.redraw();
+        return Promise.resolve();
+    }
+}
+
+function unloadViews(app: App, viewType: string): void {
+    app.workspace
+        .getLeavesOfType(viewType)
+        .forEach((leaf: WorkspaceLeaf) => leaf.detach())
 }
