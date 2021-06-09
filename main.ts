@@ -179,7 +179,7 @@ function buildView(app: App) {
                                                 if (keyType === 'date') { eachValue = window.moment(eachValue).format('YYYY-MM-DD') }
                                                 if (!eachFileValTmp.includes(eachValue)) {
                                                     eachFileValTmp.push(eachValue);
-                                                    if (eachValue === eachVal) {
+                                                    if (eachValue.toLowerCase() === eachVal.toLowerCase()) {
                                                         const eachValDet = eachValPar.createDiv({ cls: 'tree-item search-result' });
                                                         eachValDet.setAttribute("style", 'margin-bottom: 0px; margin-left: 10px;');
                                                         //const linkPar = eachValDet.createEl('p', { cls: '' });
