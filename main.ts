@@ -21,6 +21,7 @@ interface FileDates {
 
 const PLUGIN_NAME = 'Related YAML';
 const VIEW_TYPE = 'related-yaml';
+let curYaml: FrontMatterCache;
 
 interface MyPluginSettings {
     mySetting: string;
@@ -50,6 +51,25 @@ export default class MyPlugin extends Plugin {
         this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
         this.registerEvent(this.app.workspace.on('file-open', this.onFileChange.bind(this)));
         this.registerEvent(this.app.workspace.on('file-menu', this.onFileMenu.bind(this)));
+
+        this.registerEvent(
+            this.app.metadataCache.on('resolve', (file) => {
+                if (this.app.workspace.layoutReady) {
+                    //console.log('onMetaChange()');
+                    if (this.app.workspace.getActiveFile() != file) return;
+                    //console.time('onMetaChange');
+                    if (isViewActive(this.app)) {
+                        const mdCache = this.app.metadataCache.getCache(file.path);
+                        if (JSON.stringify(curYaml) !== JSON.stringify(mdCache.frontmatter)) {
+                            curYaml = mdCache.frontmatter;
+                            //console.log('buildView');
+                            buildView(this.app);
+                        }
+                    }
+                    //console.timeEnd('onMetaChange');
+                }
+            })
+        );
     }
 
     async onLayoutReady() {
