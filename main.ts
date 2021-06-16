@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, View, ItemView, Menu, TFile, TAbstractFile, TFolder } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, View, ItemView, Menu, TFile, TAbstractFile, TFolder, setIcon, FrontMatterCache } from 'obsidian';
 import type moment from "moment";
 
 declare global {
@@ -10,6 +10,9 @@ declare global {
 declare module "obsidian" {
     interface Plugin {
         view: View;
+    }
+    interface WorkspaceLeaf {
+        height: number;
     }
 }
 
@@ -51,6 +54,8 @@ export default class MyPlugin extends Plugin {
         this.app.workspace.onLayoutReady(this.onLayoutReady.bind(this));
         this.registerEvent(this.app.workspace.on('file-open', this.onFileChange.bind(this)));
         this.registerEvent(this.app.workspace.on('file-menu', this.onFileMenu.bind(this)));
+        //Primarily for when switching between Edit and Preview mode
+        this.registerEvent(this.app.workspace.on('layout-change', this.onLayoutChange.bind(this)));
 
         this.registerEvent(
             this.app.metadataCache.on('resolve', (file) => {
@@ -85,15 +90,22 @@ export default class MyPlugin extends Plugin {
     }
 
     onFileChange(): void {
-        //console.log('fileChange()')
+        //console.log('onFileChange()');
         if (this.app.workspace.layoutReady) {
             buildView(this.app);
         }
     }
 
+    onLayoutChange(): void {
+        //console.log('onLayoutChange()');
+        if (this.app.workspace.layoutReady) {
+            //console.log('buildView');
+            if (isViewActive(this.app)) { buildView(this.app); }
+        }
+    }
+
     onFileMenu(): void {
         //console.log('onFileMenu()');
-        //onMenuOpenCallback(this.menu, this.file, this.source);
     }
 
     async loadSettings() {
@@ -118,22 +130,23 @@ function buildView(app: App) {
     const yamlLeaf: WorkspaceLeaf = app.workspace.getLeavesOfType(VIEW_TYPE)[0];
     const yamlView: View = yamlLeaf.view;
 
-    //Class names
-    const clMainDiv = 'rel-yaml-main';
-
-    //Margin left for children detail/summary toggles
-    const margLeft = '15px';
-
+    const clMainDiv = 'ry-main';
     const viewContentEl = yamlView.containerEl.querySelector('.view-content');
     const oldMain = viewContentEl.querySelector(`.${clMainDiv}`)
     if (oldMain) { viewContentEl.removeChild(oldMain) }
 
     //List all YAML keys/properties
     const mdCache = app.metadataCache.getCache(actFile.path);
-    let yaml = mdCache ? mdCache.frontmatter : null;
-    if (!yaml) { yaml = { 'position': null } }
+    let yamlTmp = mdCache ? mdCache.frontmatter : null;
+    let yaml: FrontMatterCache;
+    if (!yamlTmp) { yaml = { 'position': null } } else { yaml = JSON.parse(JSON.stringify(yamlTmp)); }
     if (yaml) {
-        const mainDiv = viewContentEl.createDiv({ cls: 'rel-yaml-main' });
+        const mainDiv = viewContentEl.createDiv({ cls: clMainDiv });
+        const refreshButton = mainDiv.createEl("button", { cls: "ry-refresh-button" })
+        setIcon(refreshButton, 'switch');
+        refreshButton.on("click", "button", (event) => {
+            buildView(app);
+        });
         const headerText = mainDiv.createEl('h3', { cls: 'ry-header', text: actFile.basename });
         const yamlKeysCont = mainDiv.createDiv({ cls: '' });
         const allFiles = app.vault.getMarkdownFiles();
@@ -172,7 +185,7 @@ function buildView(app: App) {
                         if (!eachValTmp.includes(eachVal)) {
                             eachValTmp.push(eachVal);
                             const eachValPar = eachKeyDet.createEl('details', { cls: '' });
-                            eachValPar.setAttribute("style", `margin-left: ${margLeft}; margin-top: 5px`);
+                            eachValPar.setAttribute("style", `margin-left: 15px; margin-top: 5px`);
                             const eachValSum = eachValPar.createEl('summary', { cls: '' });
                             eachValSum.setAttribute("style", 'cursor: pointer;');
                             const eachValDiv = eachValSum.createDiv({ cls: '', text: `${eachVal}` });
@@ -199,7 +212,7 @@ function buildView(app: App) {
                                                 if (keyType === 'date') { eachValue = window.moment(eachValue).format('YYYY-MM-DD') }
                                                 if (!eachFileValTmp.includes(eachValue)) {
                                                     eachFileValTmp.push(eachValue);
-                                                    if (eachValue.toLowerCase() === eachVal.toLowerCase()) {
+                                                    if (eachValue.toString().toLowerCase() === eachVal.toString().toLowerCase()) {
                                                         const eachValDet = eachValPar.createDiv({ cls: 'tree-item search-result' });
                                                         eachValDet.setAttribute("style", 'margin-bottom: 0px; margin-left: 10px;');
                                                         //const linkPar = eachValDet.createEl('p', { cls: '' });
@@ -265,6 +278,16 @@ function buildView(app: App) {
             }
             //console.log(otherArr);
         })
+    }
+}
+
+function isViewActive(app: App, yamlLeaf: WorkspaceLeaf = app.workspace.getLeavesOfType(VIEW_TYPE)[0]) {
+    //Only re-create the view if it is currently open/active in view of user
+    if (yamlLeaf.height === 0) {
+        //console.log('not currently active');
+        return false;
+    } else {
+        return true;
     }
 }
 
