@@ -89,9 +89,16 @@ export default class MyPlugin extends Plugin {
         buildView(this.app);
     }
 
-    onFileChange(): void {
+    async onFileChange() {
         //console.log('onFileChange()');
         if (this.app.workspace.layoutReady) {
+            //In case the workspace was changed need to check if need to re-add the view
+            let viewCount: number = this.app.workspace.getLeavesOfType(VIEW_TYPE).length;
+            if (viewCount == 0) {
+                await this.app.workspace.getRightLeaf(false).setViewState({
+                    type: VIEW_TYPE,
+                });
+            }
             //File change does not need to check for isViewActive() function
             buildView(this.app);
         }
