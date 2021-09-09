@@ -137,7 +137,7 @@ function buildView(app: App) {
     const actFile = app.workspace.getActiveFile();
     const yamlLeaf: WorkspaceLeaf = app.workspace.getLeavesOfType(VIEW_TYPE)[0];
     let yamlView: View;
-    if (yamlLeaf) {
+    if (yamlLeaf && actFile) {
         yamlView = yamlLeaf.view;
     } else {
         return;
