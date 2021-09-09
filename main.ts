@@ -128,7 +128,12 @@ function buildView(app: App) {
     //console.log('buildView()')
     const actFile = app.workspace.getActiveFile();
     const yamlLeaf: WorkspaceLeaf = app.workspace.getLeavesOfType(VIEW_TYPE)[0];
-    const yamlView: View = yamlLeaf.view;
+    let yamlView: View;
+    if (yamlLeaf) {
+        yamlView = yamlLeaf.view;
+    } else {
+        return;
+    }
 
     const clMainDiv = 'ry-main';
     const viewContentEl = yamlView.containerEl.querySelector('.view-content');
@@ -283,11 +288,16 @@ function buildView(app: App) {
 
 function isViewActive(app: App, yamlLeaf: WorkspaceLeaf = app.workspace.getLeavesOfType(VIEW_TYPE)[0]) {
     //Only re-create the view if it is currently open/active in view of user
-    if (yamlLeaf.height === 0) {
-        //console.log('not currently active');
-        return false;
+    if (yamlLeaf) {
+        if (yamlLeaf.height === 0) {
+            //console.log('not currently active');
+            return false;
+        } else {
+            //console.log('ACTIVE');
+            return true;
+        }
     } else {
-        return true;
+        return false;
     }
 }
 
