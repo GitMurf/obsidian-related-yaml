@@ -92,6 +92,7 @@ export default class MyPlugin extends Plugin {
     onFileChange(): void {
         //console.log('onFileChange()');
         if (this.app.workspace.layoutReady) {
+            //File change does not need to check for isViewActive() function
             buildView(this.app);
         }
     }
@@ -144,6 +145,8 @@ function buildView(app: App) {
     const mdCache = app.metadataCache.getCache(actFile.path);
     let yamlTmp = mdCache ? mdCache.frontmatter : null;
     let yaml: FrontMatterCache;
+    //Using the JSON.parse() and JSON.stringify() so that it doesn't create a reference copy to the variable of the FrontMatterCache
+        //because otherwise it will change the actual metadatacache when manipulating the yaml variable later in the function
     if (!yamlTmp) { yaml = { 'position': null } } else { yaml = JSON.parse(JSON.stringify(yamlTmp)); }
     if (yaml) {
         const mainDiv = viewContentEl.createDiv({ cls: clMainDiv });
