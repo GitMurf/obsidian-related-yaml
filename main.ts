@@ -299,7 +299,7 @@ function buildView(app: App) {
 function isViewActive(app: App, yamlLeaf: WorkspaceLeaf = app.workspace.getLeavesOfType(VIEW_TYPE)[0]) {
     //Only re-create the view if it is currently open/active in view of user
     if (yamlLeaf) {
-        if (yamlLeaf.height === 0) {
+        if (yamlLeaf.view.containerEl.offsetParent === null) {
             //console.log('not currently active');
             return false;
         } else {
